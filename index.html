@@ -2,6 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
+
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
@@ -13,6 +14,7 @@
     rel="stylesheet"
     href="https://js.arcgis.com/4.33/esri/themes/light/main.css"
   />
+
   <script src="https://js.arcgis.com/4.33/"></script>
 
   <style>
@@ -188,6 +190,20 @@
       cursor: wait;
     }
 
+    #photoHelp {
+      margin-top: 5px;
+      font-size: 12px;
+      color: #666;
+    }
+
+    #photoStatus {
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #247a36;
+      display: none;
+    }
+
     #successPanel {
       text-align: center;
     }
@@ -233,6 +249,7 @@
 
   <div id="viewDiv"></div>
 
+
   <!-- SIDEWALK SELECTED -->
   <div id="selectionPanel" class="panel">
     <h2>Sidewalk Selected</h2>
@@ -246,6 +263,7 @@
       Choose Another Sidewalk
     </button>
   </div>
+
 
   <!-- ASSESSMENT FORM -->
   <div id="assessmentPanel" class="panel">
@@ -265,6 +283,7 @@
       <option value="Missing">Missing</option>
       <option value="NA">Not Applicable</option>
     </select>
+
 
     <label class="form-label" for="issueType">
       Issue *
@@ -287,6 +306,7 @@
       <option value="Other">Other</option>
     </select>
 
+
     <label class="form-label" for="comment">
       Comment
     </label>
@@ -297,6 +317,7 @@
       maxlength="255"
       placeholder="Optional comments..."
     ></textarea>
+
 
     <label class="form-label" for="observer">
       Your Name
@@ -310,6 +331,26 @@
       placeholder="Optional"
     />
 
+
+    <label class="form-label" for="assessmentPhoto">
+      Photo
+    </label>
+
+    <input
+      id="assessmentPhoto"
+      class="form-control"
+      type="file"
+      accept="image/*"
+      capture="environment"
+    />
+
+    <p id="photoHelp">
+      Optional. Take a photo or choose one from your device.
+    </p>
+
+    <div id="photoStatus"></div>
+
+
     <button id="submitAssessment" class="primary-button">
       Submit Assessment
     </button>
@@ -319,9 +360,11 @@
     </button>
   </div>
 
+
   <!-- SUCCESS -->
   <div id="successPanel" class="panel">
     <h2>Assessment Submitted!</h2>
+
     <p>
       Thank you for helping with the SCAPA Walkability Challenge.
     </p>
@@ -331,7 +374,9 @@
     </button>
   </div>
 
+
   <div id="actions">
+
     <button id="sidewalkButton" class="action-button">
       Assess a Sidewalk
     </button>
@@ -339,7 +384,9 @@
     <button id="observationButton" class="action-button">
       Add Walkability Observation
     </button>
+
   </div>
+
 
   <script>
     require([
@@ -446,6 +493,12 @@
       const submitAssessment =
         document.getElementById("submitAssessment");
 
+      const assessmentPhoto =
+        document.getElementById("assessmentPhoto");
+
+      const photoStatus =
+        document.getElementById("photoStatus");
+
 
       function hidePanels() {
         selectionPanel.style.display = "none";
@@ -478,6 +531,11 @@
         document.getElementById("issueType").value = "";
         document.getElementById("comment").value = "";
         document.getElementById("observer").value = "";
+
+        assessmentPhoto.value = "";
+
+        photoStatus.textContent = "";
+        photoStatus.style.display = "none";
       }
 
 
@@ -505,6 +563,34 @@
 
 
       /*
+       * SHOW SELECTED PHOTO NAME
+       */
+      assessmentPhoto.addEventListener(
+        "change",
+        function() {
+
+          if (
+            assessmentPhoto.files &&
+            assessmentPhoto.files.length > 0
+          ) {
+
+            photoStatus.textContent =
+              "Photo selected: " +
+              assessmentPhoto.files[0].name;
+
+            photoStatus.style.display = "block";
+
+          } else {
+
+            photoStatus.textContent = "";
+            photoStatus.style.display = "none";
+
+          }
+        }
+      );
+
+
+      /*
        * SELECT SIDEWALK
        */
       view.on("click", async function(event) {
@@ -527,9 +613,11 @@
           });
 
           if (!result) {
+
             showMessage(
               "No sidewalk was selected. Tap directly on a green sidewalk line."
             );
+
             return;
           }
 
@@ -561,6 +649,7 @@
           showMessage(
             "There was a problem selecting that sidewalk. Please try again."
           );
+
         }
       });
 
@@ -615,7 +704,7 @@
 
 
       /*
-       * GENERATE A SIMPLE UNIQUE ASSESSMENT ID
+       * GENERATE ASSESSMENT ID
        */
       function createAssessmentId() {
 
@@ -635,6 +724,284 @@
 
 
       /*
+       * GENERATE RFC-4122 STYLE GUID
+       */
+      function createGuid() {
+
+        if (
+          window.crypto &&
+          typeof window.crypto.randomUUID === "function"
+        ) {
+          return window.crypto.randomUUID();
+        }
+
+        return "xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx"
+          .replace(/[xy]/g, function(c) {
+
+            const r =
+              Math.random() * 16 | 0;
+
+            const v =
+              c === "x"
+                ? r
+                : (r & 0x3 | 0x8);
+
+            return v.toString(16);
+          });
+      }
+
+
+      /*
+       * CONVERT FILE TO BASE64
+       *
+       * ArcGIS wants only the Base64 data itself,
+       * not the "data:image/jpeg;base64," prefix.
+       */
+      function fileToBase64(file) {
+
+        return new Promise(function(resolve, reject) {
+
+          const reader = new FileReader();
+
+          reader.onload = function() {
+
+            const result =
+              reader.result || "";
+
+            const commaIndex =
+              result.indexOf(",");
+
+            if (commaIndex === -1) {
+
+              reject(
+                new Error(
+                  "The selected photo could not be encoded."
+                )
+              );
+
+              return;
+            }
+
+            resolve(
+              result.substring(commaIndex + 1)
+            );
+          };
+
+
+          reader.onerror = function() {
+
+            reject(
+              new Error(
+                "The selected photo could not be read."
+              )
+            );
+          };
+
+
+          reader.readAsDataURL(file);
+
+        });
+      }
+
+
+      /*
+       * APPLY EDITS DIRECTLY TO THE PUBLIC
+       * ADD-ONLY TABLE ENDPOINT.
+       *
+       * This is the same pattern successfully
+       * tested in the ArcGIS REST Services Directory:
+       *
+       * - add assessment
+       * - add attachment
+       * - use GlobalIDs
+       * - one Apply Edits request
+       */
+      async function submitAssessmentWithOptionalPhoto(
+        attributes,
+        assessmentGlobalId,
+        photoFile
+      ) {
+
+        /*
+         * The public submission view item is:
+         * 7e7ee8ee34cd43b7bb22d8e5d6ce241e
+         *
+         * assessmentTable.url resolves to its
+         * FeatureServer/2 endpoint after load().
+         */
+        const applyEditsUrl =
+          assessmentTable.url + "/applyEdits";
+
+
+        const featureAdds = [
+          {
+            attributes: {
+              ...attributes,
+              GlobalID: assessmentGlobalId
+            }
+          }
+        ];
+
+
+        const params =
+          new URLSearchParams();
+
+        params.set(
+          "adds",
+          JSON.stringify(featureAdds)
+        );
+
+        params.set(
+          "useGlobalIds",
+          "true"
+        );
+
+        params.set(
+          "rollbackOnFailure",
+          "true"
+        );
+
+        params.set(
+          "returnEditMoment",
+          "true"
+        );
+
+        params.set(
+          "f",
+          "json"
+        );
+
+
+        if (photoFile) {
+
+          const attachmentGlobalId =
+            createGuid();
+
+          const base64Data =
+            await fileToBase64(photoFile);
+
+
+          const attachments = {
+            adds: [
+              {
+                globalId:
+                  attachmentGlobalId,
+
+                parentGlobalId:
+                  assessmentGlobalId,
+
+                contentType:
+                  photoFile.type ||
+                  "image/jpeg",
+
+                name:
+                  photoFile.name ||
+                  "SCAPA_photo.jpg",
+
+                data:
+                  base64Data
+              }
+            ]
+          };
+
+
+          params.set(
+            "attachments",
+            JSON.stringify(attachments)
+          );
+        }
+
+
+        const response =
+          await fetch(applyEditsUrl, {
+
+            method: "POST",
+
+            headers: {
+              "Content-Type":
+                "application/x-www-form-urlencoded;charset=UTF-8"
+            },
+
+            body:
+              params.toString()
+
+          });
+
+
+        if (!response.ok) {
+
+          throw new Error(
+            "ArcGIS request failed with HTTP " +
+            response.status +
+            "."
+          );
+        }
+
+
+        const result =
+          await response.json();
+
+
+        if (result.error) {
+
+          throw new Error(
+            result.error.message ||
+            "ArcGIS returned an error."
+          );
+        }
+
+
+        const addResult =
+          result.addResults &&
+          result.addResults[0];
+
+
+        if (
+          !addResult ||
+          addResult.success !== true
+        ) {
+
+          const message =
+            addResult &&
+            addResult.error &&
+            addResult.error.description
+              ? addResult.error.description
+              : "The assessment was not added.";
+
+          throw new Error(message);
+        }
+
+
+        if (photoFile) {
+
+          const attachmentResult =
+            result.attachments &&
+            result.attachments.addResults &&
+            result.attachments.addResults[0];
+
+
+          if (
+            !attachmentResult ||
+            attachmentResult.success !== true
+          ) {
+
+            const message =
+              attachmentResult &&
+              attachmentResult.error &&
+              attachmentResult.error.description
+                ? attachmentResult.error.description
+                : "The photo was not attached.";
+
+            throw new Error(message);
+          }
+        }
+
+
+        return result;
+      }
+
+
+      /*
        * SUBMIT SIDEWALK ASSESSMENT
        */
       submitAssessment.addEventListener(
@@ -642,9 +1009,11 @@
         async function() {
 
           if (!selectedSidewalk) {
+
             showMessage(
               "Please select a sidewalk first."
             );
+
             return;
           }
 
@@ -678,76 +1047,69 @@
             selectedSidewalk.attributes.GlobalID;
 
 
+          const photoFile =
+            assessmentPhoto.files &&
+            assessmentPhoto.files.length > 0
+              ? assessmentPhoto.files[0]
+              : null;
+
+
           /*
-           * Create the related table record.
+           * Give the new assessment its GlobalID
+           * before submitting it.
            *
-           * IMPORTANT:
-           * SidewalkGlobalID comes directly from the
-           * selected read-only sidewalk feature.
+           * The attachment uses this value as its
+           * parentGlobalId.
            */
-          const assessmentGraphic = new Graphic({
+          const assessmentGlobalId =
+            createGuid();
 
-            attributes: {
 
-              SidewalkGlobalID:
-                sidewalkGlobalID,
+          const attributes = {
 
-              AssessmentID:
-                createAssessmentId(),
+            SidewalkGlobalID:
+              sidewalkGlobalID,
 
-              Condition:
-                condition,
+            AssessmentID:
+              createAssessmentId(),
 
-              IssueType:
-                issueType,
+            Condition:
+              condition,
 
-              Comment:
-                comment,
+            IssueType:
+              issueType,
 
-              Observer:
-                observer,
+            Comment:
+              comment,
 
-              ObsDate:
-                Date.now(),
+            Observer:
+              observer,
 
-              PhotoTaken:
-                0
-            }
-          });
+            ObsDate:
+              Date.now(),
+
+            PhotoTaken:
+              photoFile ? 1 : 0
+
+          };
 
 
           submitAssessment.disabled = true;
+
           submitAssessment.textContent =
-            "Submitting...";
+            photoFile
+              ? "Submitting Assessment & Photo..."
+              : "Submitting...";
 
 
           try {
 
-            const edits =
-              await assessmentTable.applyEdits({
-
-                addFeatures: [
-                  assessmentGraphic
-                ]
-
-              });
-
-
             const result =
-              edits.addFeatureResults &&
-              edits.addFeatureResults[0];
-
-
-            if (!result || result.error) {
-
-              throw (
-                result && result.error
-                  ? result.error
-                  : new Error(
-                      "ArcGIS did not return a successful result."
-                    )
+              await submitAssessmentWithOptionalPhoto(
+                attributes,
+                assessmentGlobalId,
+                photoFile
               );
-            }
 
 
             console.log(
@@ -759,6 +1121,12 @@
             console.log(
               "Related sidewalk:",
               sidewalkGlobalID
+            );
+
+
+            console.log(
+              "Assessment GlobalID:",
+              assessmentGlobalId
             );
 
 
@@ -803,6 +1171,7 @@
         .addEventListener("click", function() {
 
           resetForm();
+
           startSidewalkSelection();
 
         });
@@ -812,7 +1181,7 @@
        * GENERAL WALKABILITY OBSERVATION
        *
        * We'll build this after the sidewalk
-       * submission is verified.
+       * assessment/photo workflow is verified.
        */
       observationButton.addEventListener(
         "click",
