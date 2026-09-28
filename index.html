@@ -2,7 +2,6 @@
 <html lang="en">
 <head>
   <meta charset="utf-8" />
-
   <meta
     name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
@@ -14,13 +13,10 @@
     rel="stylesheet"
     href="https://js.arcgis.com/4.33/esri/themes/light/main.css"
   />
-
   <script src="https://js.arcgis.com/4.33/"></script>
 
   <style>
-    html,
-    body,
-    #viewDiv {
+    html, body, #viewDiv {
       padding: 0;
       margin: 0;
       height: 100%;
@@ -36,7 +32,7 @@
       z-index: 10;
       background: white;
       padding: 10px 14px;
-      box-shadow: 0 2px 6px rgba(0,0,0,0.20);
+      box-shadow: 0 2px 6px rgba(0,0,0,.2);
     }
 
     #header h1 {
@@ -63,28 +59,20 @@
       left: 0;
       right: 0;
       z-index: 10;
-
       background: white;
-
       padding: 10px;
-
       display: flex;
       gap: 10px;
-
-      box-shadow: 0 -2px 6px rgba(0,0,0,0.20);
+      box-shadow: 0 -2px 6px rgba(0,0,0,.2);
     }
 
     .action-button {
       flex: 1;
-
       border: none;
       border-radius: 8px;
-
       padding: 14px 8px;
-
       font-size: 15px;
       font-weight: bold;
-
       cursor: pointer;
     }
 
@@ -105,104 +93,110 @@
 
     #message {
       position: absolute;
-
       top: 82px;
       left: 50%;
-
       transform: translateX(-50%);
-
-      z-index: 20;
-
-      background: rgba(255,255,255,0.97);
-
+      z-index: 30;
+      background: rgba(255,255,255,.97);
       padding: 10px 16px;
-
       border-radius: 7px;
-
-      box-shadow: 0 2px 8px rgba(0,0,0,0.30);
-
+      box-shadow: 0 2px 8px rgba(0,0,0,.3);
       font-size: 14px;
-
       display: none;
-
       max-width: 85%;
-
       text-align: center;
     }
 
-    #selectionPanel {
+    .panel {
       position: absolute;
-
       left: 50%;
       bottom: 100px;
-
       transform: translateX(-50%);
-
       z-index: 20;
-
-      width: 320px;
+      width: 350px;
       max-width: calc(100% - 30px);
-
+      max-height: calc(100% - 200px);
+      overflow-y: auto;
       background: white;
-
       border-radius: 10px;
-
-      box-shadow: 0 3px 12px rgba(0,0,0,0.30);
-
-      padding: 14px;
-
+      box-shadow: 0 3px 12px rgba(0,0,0,.3);
+      padding: 15px;
       display: none;
+      box-sizing: border-box;
     }
 
-    #selectionPanel h2 {
-      margin: 0 0 6px;
-      font-size: 18px;
+    .panel h2 {
+      margin: 0 0 8px;
+      font-size: 19px;
     }
 
-    #selectionPanel p {
+    .panel p {
       margin: 5px 0;
       font-size: 13px;
       color: #555;
     }
 
-    #continueAssessment {
+    .form-label {
+      display: block;
+      margin-top: 12px;
+      margin-bottom: 4px;
+      font-size: 13px;
+      font-weight: bold;
+    }
+
+    .form-control {
       width: 100%;
+      box-sizing: border-box;
+      padding: 10px;
+      border: 1px solid #aaa;
+      border-radius: 6px;
+      background: white;
+      font-size: 16px;
+    }
 
-      margin-top: 10px;
+    textarea.form-control {
+      min-height: 80px;
+      resize: vertical;
+    }
 
+    .primary-button {
+      width: 100%;
+      margin-top: 12px;
       padding: 12px;
-
       border: none;
       border-radius: 7px;
-
       background: #007ac2;
       color: white;
-
       font-weight: bold;
       font-size: 15px;
-
       cursor: pointer;
     }
 
-    #cancelSelection {
+    .secondary-button {
       width: 100%;
-
       margin-top: 7px;
-
-      padding: 9px;
-
+      padding: 10px;
       border: 1px solid #aaa;
       border-radius: 7px;
-
       background: white;
-
       font-size: 14px;
-
       cursor: pointer;
+    }
+
+    #submitAssessment:disabled {
+      opacity: .6;
+      cursor: wait;
+    }
+
+    #successPanel {
+      text-align: center;
+    }
+
+    #successPanel h2 {
+      color: #247a36;
     }
 
     @media (max-width: 600px) {
-
       #header h1 {
         font-size: 18px;
       }
@@ -220,6 +214,10 @@
         padding: 13px 6px;
       }
 
+      .panel {
+        bottom: 95px;
+        max-height: calc(100% - 185px);
+      }
     }
   </style>
 </head>
@@ -228,132 +226,171 @@
 
   <div id="header">
     <h1>SCAPA Walkability Challenge</h1>
-
-    <p>
-      Explore downtown Columbia and help identify pedestrian conditions.
-    </p>
+    <p>Explore downtown Columbia and help identify pedestrian conditions.</p>
   </div>
-
 
   <div id="message"></div>
 
-
   <div id="viewDiv"></div>
 
-
-  <div id="selectionPanel">
-
+  <!-- SIDEWALK SELECTED -->
+  <div id="selectionPanel" class="panel">
     <h2>Sidewalk Selected</h2>
+    <p>You've selected this sidewalk segment.</p>
 
-    <p>
-      You've selected this sidewalk segment.
-    </p>
-
-    <p id="selectedId"></p>
-
-    <button id="continueAssessment">
+    <button id="continueAssessment" class="primary-button">
       Assess This Sidewalk
     </button>
 
-    <button id="cancelSelection">
+    <button id="cancelSelection" class="secondary-button">
       Choose Another Sidewalk
     </button>
-
   </div>
 
+  <!-- ASSESSMENT FORM -->
+  <div id="assessmentPanel" class="panel">
+    <h2>Sidewalk Assessment</h2>
+    <p>Tell us what you observe on this sidewalk.</p>
+
+    <label class="form-label" for="condition">
+      Condition *
+    </label>
+
+    <select id="condition" class="form-control">
+      <option value="">Select condition...</option>
+      <option value="Excellent">Excellent</option>
+      <option value="Good">Good</option>
+      <option value="Fair">Fair</option>
+      <option value="Poor">Poor</option>
+      <option value="Missing">Missing</option>
+      <option value="NA">Not Applicable</option>
+    </select>
+
+    <label class="form-label" for="issueType">
+      Issue *
+    </label>
+
+    <select id="issueType" class="form-control">
+      <option value="">Select issue...</option>
+      <option value="None">No Issue / Good Condition</option>
+      <option value="Cracking">Cracked Surface</option>
+      <option value="Uneven">Uneven Surface / Trip Hazard</option>
+      <option value="Obstruction">Obstruction</option>
+      <option value="Vegetation">Vegetation Encroachment</option>
+      <option value="Narrow">Sidewalk Too Narrow</option>
+      <option value="Missing">Missing Sidewalk / Gap</option>
+      <option value="ADA">ADA / Accessibility Issue</option>
+      <option value="Drainage">Drainage / Standing Water</option>
+      <option value="Driveway">Driveway Conflict</option>
+      <option value="Buffer">Insufficient Separation from Traffic</option>
+      <option value="Connection">Poor/Missing Pedestrian Connection</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <label class="form-label" for="comment">
+      Comment
+    </label>
+
+    <textarea
+      id="comment"
+      class="form-control"
+      maxlength="255"
+      placeholder="Optional comments..."
+    ></textarea>
+
+    <label class="form-label" for="observer">
+      Your Name
+    </label>
+
+    <input
+      id="observer"
+      class="form-control"
+      type="text"
+      maxlength="50"
+      placeholder="Optional"
+    />
+
+    <button id="submitAssessment" class="primary-button">
+      Submit Assessment
+    </button>
+
+    <button id="cancelAssessment" class="secondary-button">
+      Cancel
+    </button>
+  </div>
+
+  <!-- SUCCESS -->
+  <div id="successPanel" class="panel">
+    <h2>Assessment Submitted!</h2>
+    <p>
+      Thank you for helping with the SCAPA Walkability Challenge.
+    </p>
+
+    <button id="anotherAssessment" class="primary-button">
+      Assess Another Sidewalk
+    </button>
+  </div>
 
   <div id="actions">
-
-    <button
-      id="sidewalkButton"
-      class="action-button"
-    >
+    <button id="sidewalkButton" class="action-button">
       Assess a Sidewalk
     </button>
 
-
-    <button
-      id="observationButton"
-      class="action-button"
-    >
+    <button id="observationButton" class="action-button">
       Add Walkability Observation
     </button>
-
   </div>
 
-
   <script>
-
     require([
-
       "esri/Map",
-
       "esri/views/MapView",
-
       "esri/layers/FeatureLayer",
-
-      "esri/widgets/Locate"
-
-    ], function (
-
+      "esri/widgets/Locate",
+      "esri/Graphic"
+    ], function(
       Map,
-
       MapView,
-
       FeatureLayer,
-
-      Locate
-
+      Locate,
+      Graphic
     ) {
 
-
       /*
-       * -------------------------------------------------
-       * READ-ONLY SIDEWALK REFERENCE
-       * -------------------------------------------------
+       * READ-ONLY SIDEWALK VIEW
        */
-
       const sidewalkLayer = new FeatureLayer({
-
         portalItem: {
           id: "2ec5287ad77146818801312413aa80d4"
         },
-
         layerId: 1,
-
         title: "Sidewalks",
-
-        outFields: [
-          "OBJECTID",
-          "GlobalID"
-        ],
-
+        outFields: ["OBJECTID", "GlobalID"],
         popupEnabled: false
-
       });
 
 
       /*
-       * -------------------------------------------------
-       * MAP
-       * -------------------------------------------------
+       * PUBLIC ADD-ONLY SUBMISSION VIEW
+       *
+       * Table 2 = SCAPA Sidewalk Assessments
        */
+      const assessmentTable = new FeatureLayer({
+        portalItem: {
+          id: "7e7ee8ee34cd43b7bb22d8e5d6ce241e"
+        },
+        layerId: 2
+      });
+
 
       const map = new Map({
-
         basemap: "streets-navigation-vector",
-
-        layers: [
-          sidewalkLayer
-        ]
-
+        layers: [sidewalkLayer]
       });
 
 
       const view = new MapView({
-
         container: "viewDiv",
-
         map: map,
 
         center: [
@@ -366,426 +403,477 @@
         constraints: {
           minZoom: 13
         }
-
       });
 
 
-      /*
-       * -------------------------------------------------
-       * GPS BUTTON
-       * -------------------------------------------------
-       */
-
       const locateWidget = new Locate({
-
         view: view,
-
         useHeadingEnabled: false,
 
         goToOverride: function(view, options) {
-
           options.target.scale = 2500;
-
-          return view.goTo(
-            options.target
-          );
-
+          return view.goTo(options.target);
         }
-
       });
 
+      view.ui.add(locateWidget, "top-left");
 
-      view.ui.add(
-        locateWidget,
-        "top-left"
-      );
-
-
-      /*
-       * -------------------------------------------------
-       * VARIABLES
-       * -------------------------------------------------
-       */
 
       let sidewalkSelectionMode = false;
-
       let selectedSidewalk = null;
-
       let sidewalkLayerView = null;
-
       let highlightHandle = null;
 
 
       const sidewalkButton =
-        document.getElementById(
-          "sidewalkButton"
-        );
-
+        document.getElementById("sidewalkButton");
 
       const observationButton =
-        document.getElementById(
-          "observationButton"
-        );
-
+        document.getElementById("observationButton");
 
       const message =
-        document.getElementById(
-          "message"
-        );
-
+        document.getElementById("message");
 
       const selectionPanel =
-        document.getElementById(
-          "selectionPanel"
-        );
+        document.getElementById("selectionPanel");
+
+      const assessmentPanel =
+        document.getElementById("assessmentPanel");
+
+      const successPanel =
+        document.getElementById("successPanel");
+
+      const submitAssessment =
+        document.getElementById("submitAssessment");
 
 
-      const selectedId =
-        document.getElementById(
-          "selectedId"
-        );
+      function hidePanels() {
+        selectionPanel.style.display = "none";
+        assessmentPanel.style.display = "none";
+        successPanel.style.display = "none";
+      }
 
-
-      /*
-       * -------------------------------------------------
-       * MESSAGE
-       * -------------------------------------------------
-       */
 
       function showMessage(text) {
-
         message.textContent = text;
-
         message.style.display = "block";
-
       }
 
 
       function hideMessage() {
-
         message.style.display = "none";
+      }
 
+
+      function clearHighlight() {
+        if (highlightHandle) {
+          highlightHandle.remove();
+          highlightHandle = null;
+        }
+      }
+
+
+      function resetForm() {
+        document.getElementById("condition").value = "";
+        document.getElementById("issueType").value = "";
+        document.getElementById("comment").value = "";
+        document.getElementById("observer").value = "";
+      }
+
+
+      function startSidewalkSelection() {
+        hidePanels();
+        hideMessage();
+
+        clearHighlight();
+
+        selectedSidewalk = null;
+        sidewalkSelectionMode = true;
+
+        sidewalkButton.classList.add("active");
+
+        showMessage(
+          "Tap the sidewalk segment you want to assess."
+        );
+      }
+
+
+      sidewalkButton.addEventListener(
+        "click",
+        startSidewalkSelection
+      );
+
+
+      /*
+       * SELECT SIDEWALK
+       */
+      view.on("click", async function(event) {
+
+        if (!sidewalkSelectionMode) {
+          return;
+        }
+
+        try {
+
+          const response = await view.hitTest(event, {
+            include: [sidewalkLayer]
+          });
+
+          const result = response.results.find(function(item) {
+            return (
+              item.graphic &&
+              item.graphic.layer === sidewalkLayer
+            );
+          });
+
+          if (!result) {
+            showMessage(
+              "No sidewalk was selected. Tap directly on a green sidewalk line."
+            );
+            return;
+          }
+
+          selectedSidewalk = result.graphic;
+
+          clearHighlight();
+
+          highlightHandle =
+            sidewalkLayerView.highlight(selectedSidewalk);
+
+          sidewalkSelectionMode = false;
+
+          sidewalkButton.classList.remove("active");
+
+          hideMessage();
+          hidePanels();
+
+          selectionPanel.style.display = "block";
+
+          console.log(
+            "Selected sidewalk GlobalID:",
+            selectedSidewalk.attributes.GlobalID
+          );
+
+        } catch (error) {
+
+          console.error(error);
+
+          showMessage(
+            "There was a problem selecting that sidewalk. Please try again."
+          );
+        }
+      });
+
+
+      /*
+       * CHOOSE ANOTHER SIDEWALK
+       */
+      document
+        .getElementById("cancelSelection")
+        .addEventListener("click", function() {
+
+          startSidewalkSelection();
+
+        });
+
+
+      /*
+       * OPEN ASSESSMENT FORM
+       */
+      document
+        .getElementById("continueAssessment")
+        .addEventListener("click", function() {
+
+          if (!selectedSidewalk) {
+            return;
+          }
+
+          hideMessage();
+          hidePanels();
+
+          resetForm();
+
+          assessmentPanel.style.display = "block";
+
+        });
+
+
+      /*
+       * CANCEL ASSESSMENT
+       */
+      document
+        .getElementById("cancelAssessment")
+        .addEventListener("click", function() {
+
+          hidePanels();
+
+          if (selectedSidewalk) {
+            selectionPanel.style.display = "block";
+          }
+
+        });
+
+
+      /*
+       * GENERATE A SIMPLE UNIQUE ASSESSMENT ID
+       */
+      function createAssessmentId() {
+
+        const randomPart =
+          Math.random()
+            .toString(36)
+            .substring(2, 8)
+            .toUpperCase();
+
+        return (
+          "SCAPA-" +
+          Date.now() +
+          "-" +
+          randomPart
+        );
       }
 
 
       /*
-       * -------------------------------------------------
-       * START SIDEWALK SELECTION
-       * -------------------------------------------------
+       * SUBMIT SIDEWALK ASSESSMENT
        */
-
-      sidewalkButton.addEventListener(
-
+      submitAssessment.addEventListener(
         "click",
+        async function() {
 
-        function() {
-
-          sidewalkSelectionMode = true;
-
-          sidewalkButton.classList.add(
-            "active"
-          );
-
-          selectionPanel.style.display =
-            "none";
-
-          showMessage(
-            "Tap the sidewalk segment you want to assess."
-          );
-
-        }
-
-      );
-
-
-      /*
-       * -------------------------------------------------
-       * MAP CLICK
-       * -------------------------------------------------
-       */
-
-      view.on(
-
-        "click",
-
-        async function(event) {
-
-          if (!sidewalkSelectionMode) {
-            return;
-          }
-
-
-          const response =
-            await view.hitTest(
-              event,
-              {
-                include: [
-                  sidewalkLayer
-                ]
-              }
-            );
-
-
-          const result =
-            response.results.find(
-              function(item) {
-
-                return (
-                  item.graphic &&
-                  item.graphic.layer ===
-                  sidewalkLayer
-                );
-
-              }
-            );
-
-
-          if (!result) {
-
+          if (!selectedSidewalk) {
             showMessage(
-              "No sidewalk was selected. Tap directly on a green sidewalk line."
+              "Please select a sidewalk first."
             );
-
             return;
-
           }
 
 
-          /*
-           * SAVE SELECTED SIDEWALK
-           */
+          const condition =
+            document.getElementById("condition").value;
 
-          selectedSidewalk =
-            result.graphic;
+          const issueType =
+            document.getElementById("issueType").value;
+
+          const comment =
+            document.getElementById("comment").value.trim();
+
+          const observer =
+            document.getElementById("observer").value.trim();
 
 
-          const globalId =
+          if (!condition) {
+            alert("Please select a condition.");
+            return;
+          }
+
+
+          if (!issueType) {
+            alert("Please select an issue.");
+            return;
+          }
+
+
+          const sidewalkGlobalID =
             selectedSidewalk.attributes.GlobalID;
 
 
           /*
-           * REMOVE OLD HIGHLIGHT
+           * Create the related table record.
+           *
+           * IMPORTANT:
+           * SidewalkGlobalID comes directly from the
+           * selected read-only sidewalk feature.
            */
+          const assessmentGraphic = new Graphic({
 
-          if (highlightHandle) {
+            attributes: {
 
-            highlightHandle.remove();
+              SidewalkGlobalID:
+                sidewalkGlobalID,
 
-            highlightHandle = null;
+              AssessmentID:
+                createAssessmentId(),
 
-          }
+              Condition:
+                condition,
+
+              IssueType:
+                issueType,
+
+              Comment:
+                comment,
+
+              Observer:
+                observer,
+
+              ObsDate:
+                Date.now(),
+
+              PhotoTaken:
+                0
+            }
+          });
 
 
-          /*
-           * HIGHLIGHT SELECTED SIDEWALK
-           */
+          submitAssessment.disabled = true;
+          submitAssessment.textContent =
+            "Submitting...";
 
-          highlightHandle =
-            sidewalkLayerView.highlight(
-              selectedSidewalk
+
+          try {
+
+            const edits =
+              await assessmentTable.applyEdits({
+
+                addFeatures: [
+                  assessmentGraphic
+                ]
+
+              });
+
+
+            const result =
+              edits.addFeatureResults &&
+              edits.addFeatureResults[0];
+
+
+            if (!result || result.error) {
+
+              throw (
+                result && result.error
+                  ? result.error
+                  : new Error(
+                      "ArcGIS did not return a successful result."
+                    )
+              );
+            }
+
+
+            console.log(
+              "Assessment submitted:",
+              result
             );
 
 
-          /*
-           * UPDATE UI
-           */
-
-          sidewalkSelectionMode = false;
-
-          sidewalkButton.classList.remove(
-            "active"
-          );
-
-          hideMessage();
+            console.log(
+              "Related sidewalk:",
+              sidewalkGlobalID
+            );
 
 
-          selectedId.textContent =
-            "Sidewalk ID: " +
-            globalId;
+            hidePanels();
+            hideMessage();
+
+            successPanel.style.display =
+              "block";
 
 
-          selectionPanel.style.display =
-            "block";
+          } catch (error) {
+
+            console.error(
+              "Assessment submission failed:",
+              error
+            );
 
 
-          console.log(
-            "Selected sidewalk GlobalID:",
-            globalId
-          );
+            showMessage(
+              "The assessment could not be submitted. Please try again."
+            );
+
+
+          } finally {
+
+            submitAssessment.disabled = false;
+
+            submitAssessment.textContent =
+              "Submit Assessment";
+
+          }
 
         }
-
       );
 
 
       /*
-       * -------------------------------------------------
-       * CHOOSE ANOTHER SIDEWALK
-       * -------------------------------------------------
+       * ANOTHER SIDEWALK
        */
-
       document
-        .getElementById(
-          "cancelSelection"
-        )
-        .addEventListener(
+        .getElementById("anotherAssessment")
+        .addEventListener("click", function() {
 
-          "click",
+          resetForm();
+          startSidewalkSelection();
 
-          function() {
-
-            if (highlightHandle) {
-
-              highlightHandle.remove();
-
-              highlightHandle = null;
-
-            }
-
-
-            selectedSidewalk = null;
-
-
-            selectionPanel.style.display =
-              "none";
-
-
-            sidewalkSelectionMode = true;
-
-
-            sidewalkButton.classList.add(
-              "active"
-            );
-
-
-            showMessage(
-              "Tap another sidewalk segment."
-            );
-
-          }
-
-        );
+        });
 
 
       /*
-       * -------------------------------------------------
-       * CONTINUE TO ASSESSMENT
-       * -------------------------------------------------
+       * GENERAL WALKABILITY OBSERVATION
        *
-       * The actual assessment form comes next.
+       * We'll build this after the sidewalk
+       * submission is verified.
        */
-
-      document
-        .getElementById(
-          "continueAssessment"
-        )
-        .addEventListener(
-
-          "click",
-
-          function() {
-
-            if (!selectedSidewalk) {
-              return;
-            }
-
-
-            const globalId =
-              selectedSidewalk.attributes.GlobalID;
-
-
-            showMessage(
-              "Great — sidewalk " +
-              globalId +
-              " is ready for assessment."
-            );
-
-
-            selectionPanel.style.display =
-              "none";
-
-
-            /*
-             * NEXT VERSION:
-             *
-             * Open assessment form and submit
-             * SidewalkGlobalID = globalId
-             *
-             */
-
-          }
-
-        );
-
-
-      /*
-       * -------------------------------------------------
-       * GENERAL OBSERVATION
-       * -------------------------------------------------
-       */
-
       observationButton.addEventListener(
-
         "click",
-
         function() {
 
           sidewalkSelectionMode = false;
 
-          sidewalkButton.classList.remove(
-            "active"
-          );
+          sidewalkButton.classList.remove("active");
 
+          hidePanels();
 
           showMessage(
-            "Walkability observation form will be connected after sidewalk assessment testing."
+            "General walkability observations are coming next."
           );
 
         }
-
       );
 
 
       /*
-       * -------------------------------------------------
        * INITIALIZE
-       * -------------------------------------------------
        */
+      view.whenLayerView(sidewalkLayer)
+        .then(function(layerView) {
 
-      view.whenLayerView(
-        sidewalkLayer
-      ).then(
-
-        function(layerView) {
-
-          sidewalkLayerView =
-            layerView;
-
+          sidewalkLayerView = layerView;
 
           console.log(
-            "Sidewalk layer ready."
+            "Sidewalk reference layer ready."
           );
 
-        }
-
-      );
+        });
 
 
-      view.when(
-
-        function() {
+      assessmentTable.load()
+        .then(function() {
 
           console.log(
-            "SCAPA Walkability Challenge ready."
+            "Assessment submission table ready."
           );
 
-        }
+        })
+        .catch(function(error) {
 
-      );
+          console.error(
+            "Could not load assessment submission table:",
+            error
+          );
 
+        });
+
+
+      view.when(function() {
+
+        console.log(
+          "SCAPA Walkability Challenge ready."
+        );
+
+      });
 
     });
-
   </script>
 
 </body>
