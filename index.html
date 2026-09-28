@@ -393,14 +393,12 @@
       "esri/Map",
       "esri/views/MapView",
       "esri/layers/FeatureLayer",
-      "esri/widgets/Locate",
-      "esri/Graphic"
+      "esri/widgets/Locate"
     ], function(
       Map,
       MapView,
       FeatureLayer,
-      Locate,
-      Graphic
+      Locate
     ) {
 
       /*
@@ -418,9 +416,10 @@
 
 
       /*
-       * PUBLIC ADD-ONLY SUBMISSION VIEW
+       * PUBLIC SUBMISSION VIEW
        *
-       * Table 2 = SCAPA Sidewalk Assessments
+       * We still load the assessment table here so
+       * the app can confirm that the table is available.
        */
       const assessmentTable = new FeatureLayer({
         portalItem: {
@@ -428,6 +427,24 @@
         },
         layerId: 2
       });
+
+
+      /*
+       * IMPORTANT:
+       *
+       * This is the exact TABLE-LEVEL Apply Edits endpoint
+       * for SCAPA Sidewalk Assessments (table ID 2).
+       *
+       * The previous version accidentally submitted to:
+       *
+       *     FeatureServer/applyEdits
+       *
+       * This version submits to:
+       *
+       *     FeatureServer/2/applyEdits
+       */
+      const ASSESSMENT_APPLY_EDITS_URL =
+        "https://services2.arcgis.com/BTzI2Eau2uhzyzRO/ArcGIS/rest/services/SCAPA_Columbia_Walkability_Submissions/FeatureServer/2/applyEdits";
 
 
       const map = new Map({
@@ -563,7 +580,7 @@
 
 
       /*
-       * SHOW SELECTED PHOTO NAME
+       * PHOTO SELECTION
        */
       assessmentPhoto.addEventListener(
         "change",
@@ -625,8 +642,10 @@
 
           clearHighlight();
 
-          highlightHandle =
-            sidewalkLayerView.highlight(selectedSidewalk);
+          if (sidewalkLayerView) {
+            highlightHandle =
+              sidewalkLayerView.highlight(selectedSidewalk);
+          }
 
           sidewalkSelectionMode = false;
 
@@ -724,7 +743,7 @@
 
 
       /*
-       * GENERATE RFC-4122 STYLE GUID
+       * GENERATE GLOBALID
        */
       function createGuid() {
 
@@ -752,10 +771,7 @@
 
 
       /*
-       * CONVERT FILE TO BASE64
-       *
-       * ArcGIS wants only the Base64 data itself,
-       * not the "data:image/jpeg;base64," prefix.
+       * CONVERT PHOTO TO BASE64
        */
       function fileToBase64(file) {
 
@@ -805,33 +821,17 @@
 
 
       /*
-       * APPLY EDITS DIRECTLY TO THE PUBLIC
-       * ADD-ONLY TABLE ENDPOINT.
+       * SUBMIT ASSESSMENT + OPTIONAL PHOTO
        *
-       * This is the same pattern successfully
-       * tested in the ArcGIS REST Services Directory:
-       *
-       * - add assessment
-       * - add attachment
-       * - use GlobalIDs
-       * - one Apply Edits request
+       * Both are sent in ONE applyEdits request.
+       * This is the same approach we successfully
+       * tested in the ArcGIS REST Services Directory.
        */
       async function submitAssessmentWithOptionalPhoto(
         attributes,
         assessmentGlobalId,
         photoFile
       ) {
-
-        /*
-         * The public submission view item is:
-         * 7e7ee8ee34cd43b7bb22d8e5d6ce241e
-         *
-         * assessmentTable.url resolves to its
-         * FeatureServer/2 endpoint after load().
-         */
-        const applyEditsUrl =
-          assessmentTable.url + "/applyEdits";
-
 
         const featureAdds = [
           {
@@ -846,25 +846,24 @@
         const params =
           new URLSearchParams();
 
+
         params.set(
           "adds",
           JSON.stringify(featureAdds)
         );
+
 
         params.set(
           "useGlobalIds",
           "true"
         );
 
+
         params.set(
           "rollbackOnFailure",
           "true"
         );
 
-        params.set(
-          "returnEditMoment",
-          "true"
-        );
 
         params.set(
           "f",
@@ -876,6 +875,7 @@
 
           const attachmentGlobalId =
             createGuid();
+
 
           const base64Data =
             await fileToBase64(photoFile);
@@ -912,20 +912,27 @@
         }
 
 
+        console.log(
+          "Submitting to:",
+          ASSESSMENT_APPLY_EDITS_URL
+        );
+
+
         const response =
-          await fetch(applyEditsUrl, {
+          await fetch(
+            ASSESSMENT_APPLY_EDITS_URL,
+            {
+              method: "POST",
 
-            method: "POST",
+              headers: {
+                "Content-Type":
+                  "application/x-www-form-urlencoded;charset=UTF-8"
+              },
 
-            headers: {
-              "Content-Type":
-                "application/x-www-form-urlencoded;charset=UTF-8"
-            },
-
-            body:
-              params.toString()
-
-          });
+              body:
+                params.toString()
+            }
+          );
 
 
         if (!response.ok) {
@@ -940,6 +947,12 @@
 
         const result =
           await response.json();
+
+
+        console.log(
+          "ArcGIS applyEdits response:",
+          result
+        );
 
 
         if (result.error) {
@@ -961,23 +974,50 @@
           addResult.success !== true
         ) {
 
-          const message =
+          const errorDescription =
             addResult &&
             addResult.error &&
-            addResult.error.description
-              ? addResult.error.description
-              : "The assessment was not added.";
+            (
+              addResult.error.description ||
+              addResult.error.message
+            );
 
-          throw new Error(message);
+
+          throw new Error(
+            errorDescription ||
+            "The assessment was not added."
+          );
         }
 
 
+        /*
+         * If a photo was included, make sure
+         * ArcGIS confirms that attachment too.
+         */
         if (photoFile) {
 
-          const attachmentResult =
+          let attachmentResult = null;
+
+
+          if (
             result.attachments &&
             result.attachments.addResults &&
-            result.attachments.addResults[0];
+            result.attachments.addResults.length
+          ) {
+
+            attachmentResult =
+              result.attachments.addResults[0];
+
+          } else if (
+            result.attachmentResults &&
+            result.attachmentResults.addResults &&
+            result.attachmentResults.addResults.length
+          ) {
+
+            attachmentResult =
+              result.attachmentResults.addResults[0];
+
+          }
 
 
           if (
@@ -985,14 +1025,19 @@
             attachmentResult.success !== true
           ) {
 
-            const message =
+            const attachmentError =
               attachmentResult &&
               attachmentResult.error &&
-              attachmentResult.error.description
-                ? attachmentResult.error.description
-                : "The photo was not attached.";
+              (
+                attachmentResult.error.description ||
+                attachmentResult.error.message
+              );
 
-            throw new Error(message);
+
+            throw new Error(
+              attachmentError ||
+              "The assessment was added, but the photo was not attached."
+            );
           }
         }
 
@@ -1002,7 +1047,7 @@
 
 
       /*
-       * SUBMIT SIDEWALK ASSESSMENT
+       * SUBMIT BUTTON
        */
       submitAssessment.addEventListener(
         "click",
@@ -1021,24 +1066,35 @@
           const condition =
             document.getElementById("condition").value;
 
+
           const issueType =
             document.getElementById("issueType").value;
 
+
           const comment =
             document.getElementById("comment").value.trim();
+
 
           const observer =
             document.getElementById("observer").value.trim();
 
 
           if (!condition) {
-            alert("Please select a condition.");
+
+            alert(
+              "Please select a condition."
+            );
+
             return;
           }
 
 
           if (!issueType) {
-            alert("Please select an issue.");
+
+            alert(
+              "Please select an issue."
+            );
+
             return;
           }
 
@@ -1054,13 +1110,6 @@
               : null;
 
 
-          /*
-           * Give the new assessment its GlobalID
-           * before submitting it.
-           *
-           * The attachment uses this value as its
-           * parentGlobalId.
-           */
           const assessmentGlobalId =
             createGuid();
 
@@ -1096,6 +1145,7 @@
 
           submitAssessment.disabled = true;
 
+
           submitAssessment.textContent =
             photoFile
               ? "Submitting Assessment & Photo..."
@@ -1113,13 +1163,13 @@
 
 
             console.log(
-              "Assessment submitted:",
+              "Assessment successfully submitted:",
               result
             );
 
 
             console.log(
-              "Related sidewalk:",
+              "Sidewalk GlobalID:",
               sidewalkGlobalID
             );
 
@@ -1146,7 +1196,8 @@
 
 
             showMessage(
-              "The assessment could not be submitted. Please try again."
+              "The assessment could not be submitted. " +
+              error.message
             );
 
 
@@ -1164,7 +1215,7 @@
 
 
       /*
-       * ANOTHER SIDEWALK
+       * ASSESS ANOTHER SIDEWALK
        */
       document
         .getElementById("anotherAssessment")
@@ -1178,10 +1229,10 @@
 
 
       /*
-       * GENERAL WALKABILITY OBSERVATION
+       * GENERAL WALKABILITY OBSERVATIONS
        *
-       * We'll build this after the sidewalk
-       * assessment/photo workflow is verified.
+       * We'll build this after the sidewalk/photo
+       * workflow is completely verified.
        */
       observationButton.addEventListener(
         "click",
@@ -1202,20 +1253,32 @@
 
 
       /*
-       * INITIALIZE
+       * INITIALIZE SIDEWALK LAYER VIEW
        */
       view.whenLayerView(sidewalkLayer)
         .then(function(layerView) {
 
-          sidewalkLayerView = layerView;
+          sidewalkLayerView =
+            layerView;
 
           console.log(
             "Sidewalk reference layer ready."
           );
 
+        })
+        .catch(function(error) {
+
+          console.error(
+            "Could not load sidewalk reference layer:",
+            error
+          );
+
         });
 
 
+      /*
+       * INITIALIZE SUBMISSION TABLE
+       */
       assessmentTable.load()
         .then(function() {
 
