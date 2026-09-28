@@ -1,0 +1,291 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta
+    name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0"
+  />
+
+  <title>SCAPA Walkability Challenge</title>
+
+  <link
+    rel="stylesheet"
+    href="https://js.arcgis.com/4.33/esri/themes/light/main.css"
+  />
+
+  <script src="https://js.arcgis.com/4.33/"></script>
+
+  <style>
+    html,
+    body,
+    #viewDiv {
+      padding: 0;
+      margin: 0;
+      height: 100%;
+      width: 100%;
+      font-family: Arial, sans-serif;
+    }
+
+    #header {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      background: #ffffff;
+      padding: 10px 14px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    #header h1 {
+      margin: 0;
+      font-size: 20px;
+      line-height: 1.2;
+    }
+
+    #header p {
+      margin: 4px 0 0;
+      font-size: 13px;
+      color: #555;
+    }
+
+    #viewDiv {
+      position: absolute;
+      top: 67px;
+      bottom: 86px;
+      height: auto;
+    }
+
+    #actions {
+      position: absolute;
+      bottom: 0;
+      left: 0;
+      right: 0;
+      z-index: 10;
+      background: #ffffff;
+      padding: 10px;
+      display: flex;
+      gap: 10px;
+      box-shadow: 0 -2px 6px rgba(0, 0, 0, 0.2);
+    }
+
+    .action-button {
+      flex: 1;
+      border: none;
+      border-radius: 8px;
+      padding: 14px 8px;
+      font-size: 15px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #sidewalkButton {
+      background: #007ac2;
+      color: white;
+    }
+
+    #observationButton {
+      background: #2e8540;
+      color: white;
+    }
+
+    #message {
+      position: absolute;
+      top: 82px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 20;
+      background: rgba(255, 255, 255, 0.95);
+      padding: 8px 14px;
+      border-radius: 6px;
+      box-shadow: 0 2px 6px rgba(0, 0, 0, 0.25);
+      font-size: 14px;
+      display: none;
+      max-width: 85%;
+      text-align: center;
+    }
+
+    @media (max-width: 600px) {
+      #header h1 {
+        font-size: 18px;
+      }
+
+      #header p {
+        font-size: 12px;
+      }
+
+      #actions {
+        padding: 8px;
+      }
+
+      .action-button {
+        font-size: 14px;
+        padding: 13px 6px;
+      }
+    }
+  </style>
+</head>
+
+<body>
+
+  <div id="header">
+    <h1>SCAPA Walkability Challenge</h1>
+    <p>Explore downtown Columbia and help identify pedestrian conditions.</p>
+  </div>
+
+  <div id="message"></div>
+
+  <div id="viewDiv"></div>
+
+  <div id="actions">
+    <button id="sidewalkButton" class="action-button">
+      Assess a Sidewalk
+    </button>
+
+    <button id="observationButton" class="action-button">
+      Add Walkability Observation
+    </button>
+  </div>
+
+  <script>
+    require([
+      "esri/Map",
+      "esri/views/MapView",
+      "esri/layers/FeatureLayer",
+      "esri/widgets/Locate"
+    ], function (
+      Map,
+      MapView,
+      FeatureLayer,
+      Locate
+    ) {
+
+      /*
+       * READ-ONLY sidewalk reference.
+       *
+       * We use the ArcGIS Online portal item and layer ID
+       * rather than exposing the master editable service.
+       */
+
+      const sidewalkLayer = new FeatureLayer({
+        portalItem: {
+          id: "2ec5287ad77146818801312413aa80d4"
+        },
+        layerId: 1,
+        title: "Sidewalks",
+        outFields: ["OBJECTID", "GlobalID"],
+        popupEnabled: false
+      });
+
+      const map = new Map({
+        basemap: "streets-navigation-vector",
+        layers: [sidewalkLayer]
+      });
+
+      const view = new MapView({
+        container: "viewDiv",
+        map: map,
+
+        center: [
+          -81.0348,
+          34.0007
+        ],
+
+        zoom: 16,
+
+        constraints: {
+          minZoom: 13
+        }
+      });
+
+      /*
+       * GPS / Locate button
+       */
+
+      const locateWidget = new Locate({
+        view: view,
+        useHeadingEnabled: false,
+        goToOverride: function(view, options) {
+          options.target.scale = 2500;
+          return view.goTo(options.target);
+        }
+      });
+
+      view.ui.add(locateWidget, "top-left");
+
+
+      /*
+       * Simple message helper
+       */
+
+      const message = document.getElementById("message");
+
+      function showMessage(text) {
+        message.textContent = text;
+        message.style.display = "block";
+
+        setTimeout(function() {
+          message.style.display = "none";
+        }, 4000);
+      }
+
+
+      /*
+       * Sidewalk assessment button
+       *
+       * In the next version this will put the map into
+       * sidewalk-selection mode.
+       */
+
+      document
+        .getElementById("sidewalkButton")
+        .addEventListener("click", function() {
+
+          showMessage(
+            "Sidewalk assessment mode will be connected next."
+          );
+
+        });
+
+
+      /*
+       * General walkability observation button
+       *
+       * In the next version this will allow the attendee
+       * to place an observation point.
+       */
+
+      document
+        .getElementById("observationButton")
+        .addEventListener("click", function() {
+
+          showMessage(
+            "Walkability observation mode will be connected next."
+          );
+
+        });
+
+
+      /*
+       * Confirm map loaded successfully.
+       */
+
+      view.when(function() {
+
+        console.log(
+          "SCAPA Walkability Challenge map loaded."
+        );
+
+        console.log(
+          "Sidewalk reference layer:",
+          sidewalkLayer
+        );
+
+      });
+
+    });
+  </script>
+
+</body>
+</html>
