@@ -212,6 +212,17 @@
       color: #247a36;
     }
 
+    #observationSuccessPanel { text-align: center; }
+    #observationSuccessPanel h2 { color: #247a36; }
+    #observationPhotoStatus {
+      margin-top: 6px;
+      font-size: 12px;
+      font-weight: bold;
+      color: #247a36;
+      display: none;
+    }
+    #submitObservation:disabled { opacity: .6; cursor: wait; }
+
     @media (max-width: 600px) {
       #header h1 {
         font-size: 18px;
@@ -375,6 +386,66 @@
   </div>
 
 
+  <!-- WALKABILITY OBSERVATION FORM -->
+  <div id="observationPanel" class="panel">
+    <h2>Walkability Observation</h2>
+    <p>Describe what you observe at the location you selected.</p>
+
+    <label class="form-label" for="obsCategory">Category *</label>
+    <select id="obsCategory" class="form-control">
+      <option value="">Select category...</option>
+      <option value="Crosswalk">Crosswalk</option>
+      <option value="StopSign">Stop Sign</option>
+      <option value="TrafficSignal">Traffic Signal</option>
+      <option value="PedSignal">Pedestrian Signal</option>
+      <option value="CurbRamp">Curb Ramp / ADA</option>
+      <option value="Lighting">Pedestrian Lighting</option>
+      <option value="Obstruction">Obstruction</option>
+      <option value="Safety">Safety Concern</option>
+      <option value="Amenity">Pedestrian Amenity</option>
+      <option value="Positive">Positive Walkability Feature</option>
+      <option value="Other">Other</option>
+    </select>
+
+    <label class="form-label" for="obsCondition">Condition *</label>
+    <select id="obsCondition" class="form-control">
+      <option value="">Select condition...</option>
+      <option value="Excellent">Excellent</option>
+      <option value="Good">Good</option>
+      <option value="Fair">Fair</option>
+      <option value="Poor">Poor</option>
+      <option value="Missing">Missing</option>
+      <option value="NA">Not Applicable</option>
+    </select>
+
+    <label class="form-label" for="obsIssueType">Issue / Feature *</label>
+    <input id="obsIssueType" class="form-control" type="text" maxlength="60"
+      placeholder="Example: faded markings, missing ramp, good lighting" />
+
+    <label class="form-label" for="obsComment">Comment *</label>
+    <textarea id="obsComment" class="form-control" maxlength="255"
+      placeholder="Briefly describe what you observed..."></textarea>
+
+    <label class="form-label" for="obsObserver">Your Name *</label>
+    <input id="obsObserver" class="form-control" type="text" maxlength="50"
+      placeholder="Your name" />
+
+    <label class="form-label" for="observationPhoto">Photo</label>
+    <input id="observationPhoto" class="form-control" type="file"
+      accept="image/*" capture="environment" />
+    <p id="photoHelp">Optional. Take a photo or choose one from your device.</p>
+    <div id="observationPhotoStatus"></div>
+
+    <button id="submitObservation" class="primary-button">Submit Observation</button>
+    <button id="cancelObservation" class="secondary-button">Cancel</button>
+  </div>
+
+  <div id="observationSuccessPanel" class="panel">
+    <h2>Observation Submitted!</h2>
+    <p>Thank you for helping with the SCAPA Walkability Challenge.</p>
+    <button id="anotherObservation" class="primary-button">Add Another Observation</button>
+  </div>
+
   <div id="actions">
 
     <button id="sidewalkButton" class="action-button">
@@ -393,11 +464,15 @@
       "esri/Map",
       "esri/views/MapView",
       "esri/layers/FeatureLayer",
+      "esri/layers/GraphicsLayer",
+      "esri/Graphic",
       "esri/widgets/Locate"
     ], function(
       Map,
       MapView,
       FeatureLayer,
+      GraphicsLayer,
+      Graphic,
       Locate
     ) {
 
@@ -446,10 +521,14 @@
       const ASSESSMENT_APPLY_EDITS_URL =
         "https://services2.arcgis.com/BTzI2Eau2uhzyzR0/ArcGIS/rest/services/SCAPA_Columbia_Walkability_Submissions/FeatureServer/2/applyEdits";
 
+      const OBSERVATION_APPLY_EDITS_URL =
+        "https://services2.arcgis.com/BTzI2Eau2uhzyzR0/ArcGIS/rest/services/SCAPA_Columbia_Walkability_Submissions/FeatureServer/0/applyEdits";
+
+      const observationGraphics = new GraphicsLayer();
 
       const map = new Map({
         basemap: "streets-navigation-vector",
-        layers: [sidewalkLayer]
+        layers: [sidewalkLayer, observationGraphics]
       });
 
 
@@ -487,6 +566,8 @@
       let selectedSidewalk = null;
       let sidewalkLayerView = null;
       let highlightHandle = null;
+      let observationLocationMode = false;
+      let selectedObservationPoint = null;
 
 
       const sidewalkButton =
@@ -516,11 +597,19 @@
       const photoStatus =
         document.getElementById("photoStatus");
 
+      const observationPanel = document.getElementById("observationPanel");
+      const observationSuccessPanel = document.getElementById("observationSuccessPanel");
+      const submitObservation = document.getElementById("submitObservation");
+      const observationPhoto = document.getElementById("observationPhoto");
+      const observationPhotoStatus = document.getElementById("observationPhotoStatus");
+
 
       function hidePanels() {
         selectionPanel.style.display = "none";
         assessmentPanel.style.display = "none";
         successPanel.style.display = "none";
+        observationPanel.style.display = "none";
+        observationSuccessPanel.style.display = "none";
       }
 
 
@@ -564,6 +653,9 @@
 
         selectedSidewalk = null;
         sidewalkSelectionMode = true;
+        observationLocationMode = false;
+        selectedObservationPoint = null;
+        observationGraphics.removeAll();
 
         sidewalkButton.classList.add("active");
 
@@ -606,11 +698,44 @@
         }
       );
 
+      observationPhoto.addEventListener("change", function() {
+        if (observationPhoto.files && observationPhoto.files.length > 0) {
+          observationPhotoStatus.textContent =
+            "Photo selected: " + observationPhoto.files[0].name;
+          observationPhotoStatus.style.display = "block";
+        } else {
+          observationPhotoStatus.textContent = "";
+          observationPhotoStatus.style.display = "none";
+        }
+      });
+
 
       /*
-       * SELECT SIDEWALK
+       * SELECT SIDEWALK / OBSERVATION LOCATION
        */
       view.on("click", async function(event) {
+
+        if (observationLocationMode) {
+          selectedObservationPoint = event.mapPoint.clone();
+          observationGraphics.removeAll();
+
+          observationGraphics.add(new Graphic({
+            geometry: selectedObservationPoint,
+            symbol: {
+              type: "simple-marker",
+              style: "circle",
+              size: 14,
+              color: [0, 122, 194, 0.9],
+              outline: { color: [255, 255, 255, 1], width: 2 }
+            }
+          }));
+
+          observationLocationMode = false;
+          hideMessage();
+          hidePanels();
+          observationPanel.style.display = "block";
+          return;
+        }
 
         if (!sidewalkSelectionMode) {
           return;
@@ -1230,26 +1355,284 @@
 
       /*
        * GENERAL WALKABILITY OBSERVATIONS
-       *
-       * We'll build this after the sidewalk/photo
-       * workflow is completely verified.
        */
-      observationButton.addEventListener(
-        "click",
-        function() {
+      function resetObservationForm() {
+        document.getElementById("obsCategory").value = "";
+        document.getElementById("obsCondition").value = "";
+        document.getElementById("obsIssueType").value = "";
+        document.getElementById("obsComment").value = "";
+        document.getElementById("obsObserver").value = "";
+        observationPhoto.value = "";
+        observationPhotoStatus.textContent = "";
+        observationPhotoStatus.style.display = "none";
+      }
 
-          sidewalkSelectionMode = false;
+      function startObservationLocationSelection() {
+        sidewalkSelectionMode = false;
+        sidewalkButton.classList.remove("active");
+        clearHighlight();
+        selectedSidewalk = null;
+        hidePanels();
+        hideMessage();
+        selectedObservationPoint = null;
+        observationGraphics.removeAll();
+        observationLocationMode = true;
+        showMessage("Tap the map where you observed the walkability feature or issue.");
+      }
 
-          sidewalkButton.classList.remove("active");
+      function createObservationId() {
+        const randomPart =
+          Math.random().toString(36).substring(2, 8).toUpperCase();
+        return "OBS-" + Date.now() + "-" + randomPart;
+      }
 
+      async function submitObservationWithOptionalPhoto(
+        attributes,
+        geometry,
+        observationGlobalId,
+        photoFile
+      ) {
+        const sr = geometry.spatialReference;
+
+        const featureAdds = [{
+          geometry: {
+            x: geometry.x,
+            y: geometry.y,
+            spatialReference: {
+              wkid: sr.wkid || sr.latestWkid,
+              latestWkid: sr.latestWkid || sr.wkid
+            }
+          },
+          attributes: {
+            ...attributes,
+            GlobalID: observationGlobalId
+          }
+        }];
+
+        const params = new URLSearchParams();
+        params.set("adds", JSON.stringify(featureAdds));
+        params.set("useGlobalIds", "true");
+        params.set("rollbackOnFailure", "true");
+        params.set("f", "json");
+
+        if (photoFile) {
+          const attachmentGlobalId = createGuid();
+          const base64Data = await fileToBase64(photoFile);
+
+          params.set("attachments", JSON.stringify({
+            adds: [{
+              globalId: attachmentGlobalId,
+              parentGlobalId: observationGlobalId,
+              contentType: photoFile.type || "image/jpeg",
+              name: photoFile.name || "SCAPA_observation.jpg",
+              data: base64Data
+            }]
+          }));
+        }
+
+        const response = await fetch(
+          OBSERVATION_APPLY_EDITS_URL,
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/x-www-form-urlencoded;charset=UTF-8"
+            },
+            body: params.toString()
+          }
+        );
+
+        if (!response.ok) {
+          throw new Error(
+            "ArcGIS request failed with HTTP " + response.status + "."
+          );
+        }
+
+        const result = await response.json();
+        console.log("ArcGIS observation applyEdits response:", result);
+
+        if (result.error) {
+          throw new Error(
+            result.error.message || "ArcGIS returned an error."
+          );
+        }
+
+        const addResult =
+          result.addResults && result.addResults[0];
+
+        if (!addResult || addResult.success !== true) {
+          const detail =
+            addResult &&
+            addResult.error &&
+            (addResult.error.description || addResult.error.message);
+
+          throw new Error(
+            detail || "The observation was not added."
+          );
+        }
+
+        if (photoFile) {
+          let attachmentResult = null;
+
+          if (
+            result.attachments &&
+            result.attachments.addResults &&
+            result.attachments.addResults.length
+          ) {
+            attachmentResult =
+              result.attachments.addResults[0];
+          } else if (
+            result.attachmentResults &&
+            result.attachmentResults.addResults &&
+            result.attachmentResults.addResults.length
+          ) {
+            attachmentResult =
+              result.attachmentResults.addResults[0];
+          }
+
+          if (
+            !attachmentResult ||
+            attachmentResult.success !== true
+          ) {
+            const detail =
+              attachmentResult &&
+              attachmentResult.error &&
+              (attachmentResult.error.description ||
+               attachmentResult.error.message);
+
+            throw new Error(
+              detail ||
+              "The observation was added, but the photo was not attached."
+            );
+          }
+        }
+
+        return result;
+      }
+
+      observationButton.addEventListener("click", function() {
+        resetObservationForm();
+        startObservationLocationSelection();
+      });
+
+      document.getElementById("cancelObservation")
+        .addEventListener("click", function() {
+          observationLocationMode = false;
+          selectedObservationPoint = null;
+          observationGraphics.removeAll();
           hidePanels();
+          hideMessage();
+        });
 
+      document.getElementById("anotherObservation")
+        .addEventListener("click", function() {
+          resetObservationForm();
+          startObservationLocationSelection();
+        });
+
+      submitObservation.addEventListener("click", async function() {
+        if (!selectedObservationPoint) {
           showMessage(
-            "General walkability observations are coming next."
+            "Please choose an observation location on the map first."
+          );
+          return;
+        }
+
+        const category =
+          document.getElementById("obsCategory").value;
+        const condition =
+          document.getElementById("obsCondition").value;
+        const issueType =
+          document.getElementById("obsIssueType").value.trim();
+        const comment =
+          document.getElementById("obsComment").value.trim();
+        const observer =
+          document.getElementById("obsObserver").value.trim();
+
+        if (!category) {
+          alert("Please select a category.");
+          return;
+        }
+        if (!condition) {
+          alert("Please select a condition.");
+          return;
+        }
+        if (!issueType) {
+          alert("Please enter an issue or feature.");
+          return;
+        }
+        if (!comment) {
+          alert("Please enter a comment.");
+          return;
+        }
+        if (!observer) {
+          alert("Please enter your name.");
+          return;
+        }
+
+        const photoFile =
+          observationPhoto.files &&
+          observationPhoto.files.length > 0
+            ? observationPhoto.files[0]
+            : null;
+
+        const observationGlobalId = createGuid();
+
+        const attributes = {
+          ObservationID: createObservationId(),
+          Category: category,
+          Condition: condition,
+          IssueType: issueType,
+          Comment: comment,
+          Observer: observer,
+          ObsDate: Date.now(),
+          PhotoTaken: photoFile ? 1 : 0
+        };
+
+        submitObservation.disabled = true;
+        submitObservation.textContent =
+          photoFile
+            ? "Submitting Observation & Photo..."
+            : "Submitting...";
+
+        try {
+          const result =
+            await submitObservationWithOptionalPhoto(
+              attributes,
+              selectedObservationPoint,
+              observationGlobalId,
+              photoFile
+            );
+
+          console.log(
+            "Observation successfully submitted:",
+            result
           );
 
+          observationLocationMode = false;
+          observationGraphics.removeAll();
+          selectedObservationPoint = null;
+          hidePanels();
+          hideMessage();
+          observationSuccessPanel.style.display = "block";
+
+        } catch (error) {
+          console.error(
+            "Observation submission failed:",
+            error
+          );
+
+          showMessage(
+            "The observation could not be submitted. " +
+            error.message
+          );
+
+        } finally {
+          submitObservation.disabled = false;
+          submitObservation.textContent =
+            "Submit Observation";
         }
-      );
+      });
 
 
       /*
