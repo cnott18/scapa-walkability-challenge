@@ -223,7 +223,128 @@
     }
     #submitObservation:disabled { opacity: .6; cursor: wait; }
 
+    /* MOBILE-FIRST WELCOME + HELP */
+    #welcomeOverlay {
+      position: fixed;
+      inset: 0;
+      z-index: 100;
+      background: rgba(20, 43, 57, .92);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 22px;
+      box-sizing: border-box;
+    }
+
+    .welcome-card {
+      width: min(430px, 100%);
+      background: white;
+      border-radius: 18px;
+      padding: 28px 22px 22px;
+      box-sizing: border-box;
+      box-shadow: 0 12px 36px rgba(0,0,0,.32);
+      text-align: center;
+    }
+
+    .welcome-badge {
+      display: inline-block;
+      font-size: 12px;
+      font-weight: bold;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: #007ac2;
+      margin-bottom: 10px;
+    }
+
+    .welcome-card h1 {
+      margin: 0;
+      font-size: 27px;
+      line-height: 1.12;
+      color: #17384a;
+    }
+
+    .welcome-card p {
+      margin: 14px auto 20px;
+      max-width: 340px;
+      font-size: 16px;
+      line-height: 1.45;
+      color: #4c5960;
+    }
+
+    #startChallenge {
+      font-size: 17px;
+      padding: 15px 18px;
+      border-radius: 10px;
+    }
+
+    #welcomeHelp {
+      border: 0;
+      color: #006cae;
+      font-weight: bold;
+      margin-top: 8px;
+    }
+
+    #infoButton {
+      position: absolute;
+      top: 79px;
+      right: 12px;
+      z-index: 12;
+      width: 44px;
+      height: 44px;
+      border: none;
+      border-radius: 50%;
+      background: white;
+      color: #006cae;
+      box-shadow: 0 2px 8px rgba(0,0,0,.28);
+      font-size: 22px;
+      font-weight: bold;
+      cursor: pointer;
+    }
+
+    #helpPanel {
+      z-index: 110;
+    }
+
+    #helpPanel h2 {
+      margin-bottom: 10px;
+    }
+
+    .help-step {
+      margin: 12px 0;
+      padding: 12px;
+      border-radius: 9px;
+      background: #f4f7f8;
+      font-size: 14px;
+      line-height: 1.4;
+      color: #34454e;
+    }
+
+    .help-step strong {
+      display: block;
+      margin-bottom: 3px;
+      color: #17384a;
+    }
+
+    .action-title {
+      display: block;
+      font-size: 15px;
+      line-height: 1.15;
+    }
+
+    .action-subtitle {
+      display: block;
+      margin-top: 3px;
+      font-size: 11px;
+      line-height: 1.15;
+      font-weight: normal;
+      opacity: .95;
+    }
+
     @media (max-width: 600px) {
+      #header {
+        padding: 8px 58px 8px 12px;
+      }
+
       #header h1 {
         font-size: 18px;
       }
@@ -241,9 +362,77 @@
         padding: 13px 6px;
       }
 
+      #header p {
+        display: none;
+      }
+
+      #viewDiv {
+        top: 48px;
+        bottom: 96px;
+      }
+
+      #infoButton {
+        top: 56px;
+        right: 10px;
+      }
+
+      #message {
+        top: 58px;
+        width: calc(100% - 82px);
+        max-width: none;
+        box-sizing: border-box;
+        padding: 10px 12px;
+      }
+
+      #actions {
+        padding: 8px;
+        gap: 8px;
+        min-height: 80px;
+        box-sizing: border-box;
+      }
+
+      .action-button {
+        min-height: 64px;
+        border-radius: 10px;
+        padding: 9px 6px;
+      }
+
       .panel {
-        bottom: 95px;
-        max-height: calc(100% - 185px);
+        left: 0;
+        right: 0;
+        bottom: 0;
+        transform: none;
+        width: 100%;
+        max-width: none;
+        max-height: 78vh;
+        border-radius: 16px 16px 0 0;
+        padding: 18px 16px calc(18px + env(safe-area-inset-bottom));
+      }
+
+      .panel h2 {
+        font-size: 21px;
+      }
+
+      .primary-button, .secondary-button {
+        min-height: 48px;
+        font-size: 16px;
+      }
+
+      .form-label {
+        font-size: 14px;
+      }
+
+      #helpPanel {
+        bottom: 0;
+        max-height: 85vh;
+      }
+
+      .welcome-card {
+        padding: 26px 20px 20px;
+      }
+
+      .welcome-card h1 {
+        font-size: 26px;
       }
     }
   </style>
@@ -251,9 +440,30 @@
 
 <body>
 
+  <div id="welcomeOverlay">
+    <div class="welcome-card">
+      <div class="welcome-badge">SCAPA Conference Activity</div>
+      <h1>SCAPA Walkability Challenge</h1>
+      <p>Explore downtown Columbia and help evaluate the pedestrian experience.</p>
+      <button id="startChallenge" class="primary-button">Start the Challenge</button>
+      <button id="welcomeHelp" class="secondary-button">ⓘ How It Works</button>
+    </div>
+  </div>
+
+  <button id="infoButton" aria-label="How It Works" title="How It Works">ⓘ</button>
+
+  <div id="helpPanel" class="panel">
+    <h2>How It Works</h2>
+    <div class="help-step"><strong>1. Walk the area</strong>Use the map and your phone's location to follow along as you explore downtown Columbia.</div>
+    <div class="help-step"><strong>2. Assess a sidewalk</strong>Choose a green sidewalk segment, rate its condition, note an issue if present, and optionally take a photo.</div>
+    <div class="help-step"><strong>3. Add an observation</strong>Mark a location for a crosswalk, curb ramp, signal, lighting, safety concern, amenity, or other walkability feature.</div>
+    <div class="help-step"><strong>4. Keep exploring</strong>Submit as many observations and sidewalk assessments as you notice during the challenge.</div>
+    <button id="closeHelp" class="primary-button">Back to the Map</button>
+  </div>
+
   <div id="header">
     <h1>SCAPA Walkability Challenge</h1>
-    <p>Explore downtown Columbia and help identify pedestrian conditions.</p>
+    <p>Downtown Columbia • SCAPA Walkability Challenge</p>
   </div>
 
   <div id="message"></div>
@@ -449,11 +659,13 @@
   <div id="actions">
 
     <button id="sidewalkButton" class="action-button">
-      Assess a Sidewalk
+      <span class="action-title">Assess a Sidewalk</span>
+      <span class="action-subtitle">Rate a sidewalk segment</span>
     </button>
 
     <button id="observationButton" class="action-button">
-      Add Walkability Observation
+      <span class="action-title">Add an Observation</span>
+      <span class="action-subtitle">Crosswalks, ramps, lighting &amp; more</span>
     </button>
 
   </div>
@@ -603,6 +815,30 @@
       const observationPhoto = document.getElementById("observationPhoto");
       const observationPhotoStatus = document.getElementById("observationPhotoStatus");
 
+      const welcomeOverlay = document.getElementById("welcomeOverlay");
+      const helpPanel = document.getElementById("helpPanel");
+
+      function openHelp() {
+        hidePanels();
+        hideMessage();
+        helpPanel.style.display = "block";
+      }
+
+      document.getElementById("startChallenge").addEventListener("click", function() {
+        welcomeOverlay.style.display = "none";
+      });
+
+      document.getElementById("welcomeHelp").addEventListener("click", function() {
+        welcomeOverlay.style.display = "none";
+        openHelp();
+      });
+
+      document.getElementById("infoButton").addEventListener("click", openHelp);
+
+      document.getElementById("closeHelp").addEventListener("click", function() {
+        helpPanel.style.display = "none";
+      });
+
 
       function hidePanels() {
         selectionPanel.style.display = "none";
@@ -610,6 +846,7 @@
         successPanel.style.display = "none";
         observationPanel.style.display = "none";
         observationSuccessPanel.style.display = "none";
+        document.getElementById("helpPanel").style.display = "none";
       }
 
 
